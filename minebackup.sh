@@ -80,12 +80,15 @@ function trim_to_quota() {
 
 # 'Check executive user' function
 function as_user() {
-  [ ${DODEBUG} -eq 1 ] && set -x
-  if [ "$(whoami)" = "${USER}" ] ; then
-    /bin/bash -c "$1" 
-  else
-    su - ${RUNAS} -c "$1"
-  fi
+  #[ ${DODEBUG} -eq 1 ] && set -x
+  #echo "$(whoami) ?? ${USER}"
+  #if [ "$(whoami)" = "${USER}" ] ; then
+  #  /bin/bash -c "$1" 
+  #else
+  #  su - ${RUNAS} -c "$1"
+  #fi
+
+  /bin/bash -c "$1"
 }
 
 # 'Check running process' function
