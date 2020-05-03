@@ -21,45 +21,21 @@ RUNBACKUP_IONICE="${BIN_IONICE} -c 3"
 SAY_BACKUP_START="Backup started..."
 SAY_BACKUP_FINISHED="Backup successfully finished."
 
-#####
-# DO NOT EDIT BELOW
-#####
-
-# Read user settings from ~/.minebackup.conf
-SETTINGS_FILE="$HOME/.minebackup.conf"
-
-# Check if $SETTINGS_FILE exist
-if [ -f $SETTINGS_FILE ]
-then
-  . "${SETTINGS_FILE}"
-else
-  # Create default one
-  echo "[INFO] Creating default configuration file $SETTINGS_FILE"
-  cat > $SETTINGS_FILE << EOCONF
 # Screen session name
-SCREENNAME="minecraft"
+SERVICENAME="spigot"
 # Display name of your server
-SERVERNAME="Minecraft Server"
+SERVERNAME="Spigot server"
 # Server root directory
-SERVERDIR="/opt/minecraft"
+SERVERDIR="/var/minecraft/server"
 # Backup directory
-BACKUPDIR="/opt/backups/minecraft"
+BACKUPDIR="/var/minecraft/backup/auto"
 # Filename for full backup (using tar)
-FULLBACKUP="/opt/backups/minecraft.tar.gz"
+FULLBACKUP="/var/minecraft/backup/complete-backup.tar.gz"
 # Quota for backup directory
 BACKUP_QUOTA_MiB=5000
 
 # Exclude the following files/directories in backups
-RDIFF_EXCLUDES=(server.log plugins/dynmap/web/tiles/)
-
-## Overridable configurations (remove "#" to activate)
-#RUNBACKUP_NICE="${BIN_NICE} -n19"
-#RUNBACKUP_IONICE="${BIN_IONICE} -c 3"
-
-#SAY_BACKUP_START="Backup started..."
-#SAY_BACKUP_FINISHED="Backup successfully finished."
-EOCONF
-fi
+RDIFF_EXCLUDES=(server.log plugins/dynmap/web/tiles/ apache-maven-3.6.0 Bukkit eula.txt logs spigot.jar BuildData CraftBukkit Spigot work)
 
 # Check if binaries exist
 BINS=( "${BIN_RDIFF} ${BIN_TAR} ${BIN_NICE} ${BIN_IONICE}" )
