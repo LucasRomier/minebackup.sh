@@ -3,6 +3,9 @@
 # Copyright (C) 2013 Jonas Friedmann - License: Attribution-NonCommercial-ShareAlike 3.0 Unported
 # Based on Natenom's mcontrol (https://github.com/Natenom/mcontrol)
 
+#Requires the following entry in visudo:
+# <user> ALL=(ALL) NOPASSWD: /usr/bin/rdiff-backup
+
 #####
 # Settings
 #####
@@ -22,7 +25,7 @@ SAY_BACKUP_START="Backup started..."
 SAY_BACKUP_FINISHED="Backup successfully finished."
 
 # Screen session name
-SERVICENAME="spigot-server"
+SCREENNAME="spigot-server"
 # Display name of your server
 SERVERNAME="Spigot server"
 # Server root directory
@@ -66,9 +69,9 @@ function trim_to_quota() {
   do
     echo ""
     echo "Total backup size of ${_size_of_all_backups} MiB has reached quota of $quota MiB."
-    local _increment_count=$(($(${BIN_RDIFF} --list-increments ${_backup_dir}| grep -o increments\. | wc -l)-1))
+    local _increment_count=$(($(sudo ${BIN_RDIFF} --list-increments ${_backup_dir}| grep -o increments\. | wc -l)-1))
     echo "  going to --force --remove-older-than $((${_increment_count}-1))B"
-    ${RUNBACKUP_NICE} ${RUNBACKUP_IONICE} ${BIN_RDIFF} --force --remove-older-than $((${_increment_count}-1))B "${BACKUPDIR}" >/dev/null 2>&1
+    ${RUNBACKUP_NICE} ${RUNBACKUP_IONICE} sudo ${BIN_RDIFF} --force --remove-older-than $((${_increment_count}-1))B "${BACKUPDIR}" >/dev/null 2>&1
     echo "  Removed."
     _size_of_all_backups=$(($(du -s ${_backup_dir} | cut -f1)/1024))
   done
@@ -147,54 +150,44 @@ function mc_backup() {
     touchstatus=$?
     [ $touchstatus -eq 0 ] && echo -ne "done\n" && rm $FULLBACKUP
     [ $touchstatus -ne 0 ] && echo -ne "failed\n> ${touchtest}\n" && exit
-
     echo -ne "Full backup '${FULLBACKUP}' ..."
     ${RUNBACKUP_NICE} ${RUNBACKUP_IONICE} ${BIN_TAR} czf ${FULLBACKUP} ${SERVERDIR} ${_tarexcludes} >/dev/null 2>&1
     echo -ne "done\n"
   fi
-
   [ -d "${BACKUPDIR}" ] || mkdir -p "${BACKUPDIR}"
   echo -ne "Backing up ${SCREENNAME}... "
-
   if [ -z "$(ls -A ${SERVERDIR})" ];
   then
     echo -ne "failed\n"
     echo -ne "=> Something must be wrong, SERVERDIR(\"${SERVERDIR}\") is empty.\nWon't do a backup.\n"
     exit 1
   fi
-
   local _excludes=""
   for i in ${RDIFF_EXCLUDES[@]}
   do
     _excludes="$_excludes --exclude ${SERVERDIR}/$i"
   done
-  ${RUNBACKUP_NICE} ${RUNBACKUP_IONICE} ${BIN_RDIFF} ${_excludes} "${SERVERDIR}" "${BACKUPDIR}"
+  ${RUNBACKUP_NICE} ${RUNBACKUP_IONICE} sudo ${BIN_RDIFF} ${_excludes} "${SERVERDIR}" "${BACKUPDIR}"
   echo -ne "done\n"
-
   trim_to_quota ${BACKUP_QUOTA_MiB} 
 }
-
 # 'List available backups' function
 function listbackups() {
   [ ${DODEBUG} -eq 1 ] && set -x
-
-  temptest=`${BIN_RDIFF} -l "${BACKUPDIR}" &>/dev/null`
+  temptest=`sudo ${BIN_RDIFF} -l "${BACKUPDIR}" &>/dev/null`
   tempstatus=$?
-
   if [ $tempstatus -eq 0 ]
   then
     echo "Backups for server \"${SERVERNAME}\""
-    [ ${DODEBUG} -eq 1 ] && ${BIN_RDIFF} -l "${BACKUPDIR}"
-    ${BIN_RDIFF} --list-increment-sizes "${BACKUPDIR}"
+    [ ${DODEBUG} -eq 1 ] && sudo ${BIN_RDIFF} -l "${BACKUPDIR}"
+    sudo ${BIN_RDIFF} --list-increment-sizes "${BACKUPDIR}"
   else
     echo "Apparently no backups available"
   fi
 }
-
 # 'Restore to x' function
 function restore() {
   [ ${DODEBUG} -eq 1 ] && set -x
-
   # Check for argument
   echo -ne "Check for valid argument ... "
   if [[ "$1" =~ ^[0-9]+$ ]]; then
@@ -208,7 +201,6 @@ function restore() {
     echo -ne "=> Make sure your argument contains only numbers.\n"
     exit 1
   fi
-
   # Check for running server
   echo -ne "Check if '${SERVERNAME}' is not running... "
   if is_running
@@ -217,26 +209,21 @@ function restore() {
     echo "=> Make sure to shutdown your server before you start to restore."
     exit 1
   fi
-
   echo -ne "done\n"
-
   echo -ne "Starting to restore '${arg}' ... "
-  rdiffstatus=$((rdiff-backup --restore-as-of ${arg} --force $BACKUPDIR $SERVERDIR) 2>&1)
+  rdiffstatus=$((sudo rdiff-backup --restore-as-of ${arg} --force $BACKUPDIR $SERVERDIR) 2>&1)
   tempstatus=$?
   [ $tempstatus -eq 0 ] && echo -ne "successful\n"
   [ $tempstatus -ne 0 ] && echo -ne "failed\n> ${rdiffstatus}\n"
 }
-
 # 'List installed crons' function
 function listcrons() {
   [ ${DODEBUG} -eq 1 ] && set -x
   crontab -l | grep "minebackup"
 }
-
 #####
 # Catch argument
 #####
-
 echo "$@" > /dev/null 2>&1 
 if [ "$_" = '-debug' ];
 then
@@ -262,7 +249,6 @@ case "${1}" in
     ;;
   *)cat << EOHELP
 Usage: ${0} COMMAND [ARGUMENT]
-
 COMMANDS
     backup [full]             Backup the server.
     listbackups               List current incremental backups.
@@ -273,5 +259,4 @@ EOHELP
     exit 1
   ;;
 esac
-
 exit 0
